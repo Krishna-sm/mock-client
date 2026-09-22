@@ -1,36 +1,97 @@
-# TanStack React Example
+# React TanStack Example
 
-This example demonstrates using `@krishtz/mock-client` with TanStack Query v5, TanStack Table v8, and React Router DOM using a Feature-Driven Design (FDD) architecture.
+A Feature-Driven application demonstrating `@krishtz/mock-client` integration with TanStack Query v5, TanStack Table v8, React Hook Form, and React Router DOM.
 
-## Features
+---
 
-- **Standard useQuery** (`/query`): In-memory fetching, loading state indicators, refetching, and caching.
-- **useMutation & Cache Invalidation** (`/mutation`): Submitting forms with React Hook Form, creating/deleting entities, and automatically invalidating query caches.
-- **useInfiniteQuery** (`/infinite-scroll`): Cursor/page-based infinite pagination with cursor tracking.
-- **@tanstack/react-table** (`/table`): Rich data table with column sorting, fuzzy search filtering, and client-side pagination.
+## Overview
+
+This example demonstrates how to integrate typed in-memory mock runtimes with modern React data fetching, caching, mutation invalidation, and table virtualization patterns.
+
+---
+
+## Demonstrated Features
+
+### 1. Standard useQuery (`/query`)
+
+- In-memory data fetching from decorated Zod schemas.
+- Loading indicator and refetch triggers.
+- Automatic query caching and stale-time configuration.
+
+### 2. useMutation and Cache Invalidation (`/mutation`)
+
+- Schema-validated form submissions using React Hook Form and Zod resolvers.
+- Entity creation and deletion via `$post` and `$delete`.
+- Automatic query cache invalidation via `useQueryClient`.
+
+### 3. useInfiniteQuery with IntersectionObserver (`/infinite-scroll`)
+
+- Multi-page data accumulation with dynamic cursor/page parameters.
+- Automatic page loading triggered on scroll using the native `IntersectionObserver` API.
+- Simulated network latency to demonstrate background loading states.
+
+### 4. TanStack Table (`/table`)
+
+- Table initialization using `@tanstack/react-table` v8.
+- Column sorting, fuzzy text filtering, and client-side pagination.
+
+---
 
 ## Project Structure
 
 ```text
-src/
-├── components/           # Shared layout and navigation headers
-├── features/             # Feature-driven modules
-│   ├── query/            # Query feature (useQuery)
-│   ├── mutation/         # Mutation feature (useMutation)
-│   ├── infinite-scroll/  # Infinite scroll feature (useInfiniteQuery)
-│   └── table/            # Table feature (@tanstack/react-table)
-├── mock/                 # Mock API runtime setup and endpoints
-├── routes/               # React Router configurations
-├── schemas/              # Zod validation schemas
-└── types/                # TypeScript type definitions
+examples/react-tanstack/
+├── src/
+│   ├── components/           # Shared layout and navigation headers
+│   │   ├── Header.tsx        # Navigation tab bar
+│   │   └── Layout.tsx        # Shell layout
+│   ├── features/             # Feature modules (Feature-Driven Design)
+│   │   ├── query/            # useQuery implementation
+│   │   ├── mutation/         # useMutation with cache invalidation
+│   │   ├── infinite-scroll/  # useInfiniteQuery with IntersectionObserver
+│   │   └── table/            # @tanstack/react-table implementation
+│   ├── mock/                 # Mock API schemas and runtime instantiation
+│   │   ├── user-api.ts       # Decorated UserApi class
+│   │   ├── product-api.ts    # Decorated ProductApi class
+│   │   └── index.ts          # createMockApi client instance
+│   ├── routes/               # React Router configurations
+│   ├── schemas/              # Zod contract schemas
+│   ├── types/                # Inferred TypeScript type definitions
+│   ├── App.tsx               # Root QueryClientProvider and RouterProvider
+│   ├── index.css             # Minimalist styling
+│   └── main.tsx              # DOM entry point
+├── index.html
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 ```
 
-## Running Locally
+---
+
+## Getting Started
+
+### 1. Install Dependencies
+
+From the repository root:
 
 ```bash
-# Install dependencies from root or this folder
 npm install
+```
 
-# Start Vite development server
+### 2. Start Development Server
+
+```bash
 npm --workspace=examples/react-tanstack run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) to view the application in the browser.
+
+### 3. Type Checking and Build
+
+```bash
+# Typecheck
+npm --workspace=examples/react-tanstack run typecheck
+
+# Production build
+npm --workspace=examples/react-tanstack run build
 ```

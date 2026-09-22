@@ -1,36 +1,31 @@
 # @krishtz/mock-client
 
-> **Zod-first, type-safe in-memory mock API runtime for Storybook and tests.**
+Zod-first, type-safe in-memory mock API runtime for Storybook, unit tests, and frontend prototypes.
 
-`@krishtz/mock-client` lets you define API contracts using **Zod schemas** and HTTP-style decorators (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`). It automatically generates and validates fake response data with full TypeScript inference—**without requiring an HTTP server, MSW, fetch polyfills, or manual mock implementations**.
-
----
-
-## ✨ Features
-
-- 🎯 **Zod-First (v4 Ready)**: Built for modern Zod with zero deprecated APIs. Define your response and request schemas once with Zod; fake data generation and runtime validation happen automatically.
-- 🔒 **End-to-End Type Safety**: Inferred input (`params`, `query`, `json`) and output (`Promise<z.infer<T>>`) types.
-- ⚡ **Zero-Latency In-Memory Runtime**: No HTTP servers, no network calls, no MSW service workers, no Express/Hono servers.
-- 🪄 **Intelligent Data Generation**: Supports primitives, regex, RFC-compliant email, url, uuid, min/max limits, enums, unions, records, and arrays.
-- 🧠 **Request Context Preservation**: Automatically merges provided `json` body or `params` into the generated response.
-- 🎲 **Deterministic Seeding**: Provide a `seed` for stable, reproducible mock data in Storybook snapshots and tests.
-- 📊 **Array Sizing & Overrides**: Control array length globally, per-route, or per-call.
+`@krishtz/mock-client` lets you define API contracts using Zod schemas and HTTP method decorators (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`). It automatically generates and validates mock response data with full TypeScript type inference without requiring a mock server, MSW service workers, or manual mock data factories.
 
 ---
 
-## 📦 Installation
+## Features
+
+- **Zod-First Contract Definition**: Define request and response schemas once with Zod; data generation and runtime validation are performed automatically.
+- **End-to-End Type Safety**: Inferred input arguments (`params`, `query`, `json`) and return types (`Promise<z.infer<T>>`).
+- **In-Memory Zero-Latency Runtime**: Runs directly in JavaScript runtimes (Node.js, browser, Vitest, Jest, Storybook) without opening ports or intercepting network sockets.
+- **Payload Preservation**: Automatically reflects submitted `json` bodies and `params` into the generated mock response.
+- **Deterministic Seeding**: Supports an optional PRNG seed for reproducible mock data across test runs and visual snapshots.
+- **Array Sizing and Per-Call Overrides**: Control array lengths and response fields globally, per-route, or per-invocation.
+
+---
+
+## Installation
 
 ```bash
 npm install @krishtz/mock-client zod
-# or
-pnpm add @krishtz/mock-client zod
-# or
-yarn add @krishtz/mock-client zod
 ```
 
 ### TypeScript Configuration
 
-Enable decorator support in your `tsconfig.json`:
+Ensure decorator metadata and experimental decorators are enabled in `tsconfig.json`:
 
 ```json
 {
@@ -44,29 +39,31 @@ Enable decorator support in your `tsconfig.json`:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Define Schemas
 
 ```ts
-// src/schemas/todo.ts
+// src/schemas/todo.schema.ts
 import { z } from "zod";
+
+export const TodoStatusSchema = z.enum(["todo", "in_progress", "done"]);
 
 export const TodoSchema = z.object({
   id: z.string().uuid(),
-  title: z.string().min(3),
+  title: z.string().min(1),
   completed: z.boolean(),
-  status: z.enum(["todo", "in_progress", "done"]),
+  status: TodoStatusSchema,
   createdAt: z.date(),
 });
 
 export const CreateTodoSchema = z.object({
-  title: z.string().min(3),
+  title: z.string().min(1),
 });
 
 export const UpdateTodoSchema = z.object({
   completed: z.boolean().optional(),
-  status: z.enum(["todo", "in_progress", "done"]).optional(),
+  status: TodoStatusSchema.optional(),
 });
 
 export const TodoParamsSchema = z.object({
@@ -78,18 +75,23 @@ export const TodoParamsSchema = z.object({
 
 ### 2. Define API Class with Decorators
 
-> **Note**: You only declare the schema contract. Do **not** implement mock return values inside the methods—the library generates them automatically.
+Define route contracts on class methods. Method bodies remain empty because the mock runtime synthesizes return values according to the decorated Zod schema.
 
 ```ts
 // src/mock/todo-api.ts
 import { Get, Post, Patch, Delete } from "@krishtz/mock-client";
 import { z } from "zod";
-import { TodoSchema, CreateTodoSchema, UpdateTodoSchema, TodoParamsSchema } from "../schemas/todo";
+import {
+  TodoSchema,
+  CreateTodoSchema,
+  UpdateTodoSchema,
+  TodoParamsSchema,
+} from "../schemas/todo.schema";
 
 export class TodoApi {
   @Get({
     response: z.array(TodoSchema),
-    count: 10, // default array count for this route
+    count: 10,
   })
   list() {}
 
@@ -114,7 +116,10 @@ export class TodoApi {
 
   @Delete({
     params: TodoParamsSchema,
-    response: z.object({ success: z.boolean() }),
+    response: z.object({
+      success: z.boolean(),
+      id: z.string().uuid(),
+    }),
   })
   remove() {}
 }
@@ -122,65 +127,77 @@ export class TodoApi {
 
 ---
 
-### 3. Initialize Mock API
+### 3. Instantiate the Mock API Client
 
 ```ts
 // src/mock/index.ts
 import { createMockApi } from "@krishtz/mock-client";
 import { TodoApi } from "./todo-api";
 
-export const mockApi = createMockApi({
-  todos: new TodoApi(),
-});
+export const mockApi = createMockApi(
+  {
+    todos: new TodoApi(),
+  },
+  {
+    seed: 42,
+    arraySize: 10,
+  }
+);
 ```
 
 ---
 
-### 4. Call Routes (`$get`, `$post`, `$patch`, `$delete`)
+### 4. Execute Route Methods
 
 ```ts
 // GET list of todos
 const todos = await mockApi.todos.$get();
-// Type: Todo[]
 
-// POST create a todo (passes input title into generated output)
+// POST new todo (input attributes are preserved in response)
 const newTodo = await mockApi.todos.$post({
-  json: {
-    title: "Learn Zod Mock Client",
-  },
+  json: { title: "Implement TanStack Query" },
 });
-// Type: Todo (with title = "Learn Zod Mock Client")
 
 // PATCH update todo
 const updated = await mockApi.todos.$patch({
-  params: {
-    id: newTodo.id,
-  },
-  json: {
-    completed: true,
-  },
+  params: { id: newTodo.id },
+  json: { completed: true },
 });
-// Type: Todo (with id = newTodo.id, completed = true)
+
+// DELETE todo
+const deleted = await mockApi.todos.$delete({
+  params: { id: newTodo.id },
+});
 ```
 
 ---
 
-## 💡 What We Expect (Core Philosophy & Behavior)
+## Integration Examples
 
-| Feature                    | What We Expect                                                                                                               |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Modern Zod (v4 Ready)**  | Uses standard Zod modern APIs (`z.string().uuid()`, `z.enum()`, `z.string().email()`) with zero deprecated methods.          |
-| **No Mock Implementation** | The consumer declares empty methods. `@krishtz/mock-client` synthesizes data directly from Zod response schemas.             |
-| **Input Preservation**     | When calling `$post({ json: { title: "Custom" } })`, matching properties in the response will preserve `"Custom"`.           |
-| **Response Validation**    | Every generated mock is validated against `responseSchema.parse(generatedData)`. If invalid, an informative error is thrown. |
-| **Deterministic Data**     | When initialized with a `seed`, consecutive runs produce identical data for reliable testing and Storybook visual snapshots. |
-| **No Server / No MSW**     | Executes instantly in-memory in browser (Storybook) or Node/Vitest/Jest environments.                                        |
+### TanStack Query (React Query)
 
----
+```ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { mockApi } from "./mock";
 
-## 🎨 Storybook Integration
+export function useTodos() {
+  const queryClient = useQueryClient();
 
-Use `@krishtz/mock-client` directly in Storybook CSF3 loaders or custom decorators without needing MSW service workers:
+  const query = useQuery({
+    queryKey: ["todos"],
+    queryFn: () => mockApi.todos.$get(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (title: string) => mockApi.todos.$post({ json: { title } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos"] }),
+  });
+
+  return { ...query, createTodo: createMutation.mutateAsync };
+}
+```
+
+### Storybook CSF3 Loaders
 
 ```tsx
 // src/components/TodoList.stories.tsx
@@ -200,104 +217,53 @@ export const Default: Story = {
   loaders: [
     async () => {
       const todos = await mockApi.todos.$get({
-        mock: { count: 5 }, // override count for this story
+        mock: { count: 5 },
       });
       return { todos };
     },
   ],
   render: (_args, { loaded: { todos } }) => <TodoList initialTodos={todos} />,
 };
-
-export const SingleItem: Story = {
-  loaders: [
-    async () => {
-      const todo = await mockApi.todos.$get({
-        params: { id: "123e4567-e89b-12d3-a456-426614174000" },
-      });
-      return { todo };
-    },
-  ],
-  render: (_args, { loaded: { todo } }) => <TodoList initialTodos={[todo]} />,
-};
 ```
 
----
-
-## 🧪 Unit & Integration Testing (Vitest / Jest)
+### Unit and Integration Tests (Vitest / Jest)
 
 ```ts
-// src/mock/todo-api.test.ts
 import { describe, it, expect } from "vitest";
-import { mockApi } from "./index";
+import { mockApi } from "./mock";
 
-describe("TodoApi Mock Client", () => {
-  it("should generate a list of todos with correct schema", async () => {
+describe("TodoApi Mock Runtime", () => {
+  it("generates mock todos matching schema", async () => {
     const todos = await mockApi.todos.$get();
-
     expect(Array.isArray(todos)).toBe(true);
     expect(todos.length).toBeGreaterThan(0);
     expect(todos[0]).toHaveProperty("id");
     expect(todos[0]).toHaveProperty("title");
-    expect(["todo", "in_progress", "done"]).toContain(todos[0].status);
   });
 
-  it("should preserve input body in POST response", async () => {
+  it("preserves submitted payload in POST response", async () => {
     const created = await mockApi.todos.$post({
-      json: {
-        title: "Test Task",
-      },
+      json: { title: "Custom Task" },
     });
-
-    expect(created.title).toBe("Test Task");
-    expect(typeof created.id).toBe("string");
-  });
-
-  it("should respect mock count override", async () => {
-    const todos = await mockApi.todos.$get({
-      mock: { count: 3 },
-    });
-
-    expect(todos).toHaveLength(3);
+    expect(created.title).toBe("Custom Task");
   });
 });
 ```
 
 ---
 
-## ⚙️ Advanced Configuration
+## Examples in Repository
 
-### Deterministic Seeding
-
-Provide a `seed` to ensure repeatable data across runs:
-
-```ts
-export const mockApi = createMockApi(
-  {
-    todos: new TodoApi(),
-  },
-  {
-    seed: 42, // any number
-    arraySize: 15, // global default array size
-  }
-);
-```
-
-### Standalone Mock Generator (`generateMock`)
-
-You can also use the mock generator directly:
-
-```ts
-import { generateMock } from "@krishtz/mock-client";
-import { TodoSchema } from "./schemas/todo";
-
-const singleMockTodo = generateMock(TodoSchema, {
-  seed: 123,
-});
-```
+- **[`examples/react-ts`](examples/react-ts)**: Minimalist React + TypeScript application with custom hooks, React Hook Form, and Zod validation.
+- **[`examples/react-tanstack`](examples/react-tanstack)**: Feature-Driven React application demonstrating:
+  - Standard `useQuery` caching and refetching.
+  - `useMutation` with automatic cache invalidation.
+  - `useInfiniteQuery` multi-page accumulation with `IntersectionObserver` scroll detection.
+  - `@tanstack/react-table` with multi-column sorting, fuzzy search filtering, and client pagination.
 
 ---
 
-## 📖 API Reference
+## API Reference
 
 ### Decorators
 
@@ -307,33 +273,40 @@ const singleMockTodo = generateMock(TodoSchema, {
 - `@Patch(options: RouteConfig)`
 - `@Delete(options: RouteConfig)`
 
-#### `RouteConfig` Options
+#### `RouteConfig` Properties
 
-| Option          | Type         | Description                                        |
-| --------------- | ------------ | -------------------------------------------------- |
-| `response`      | `ZodTypeAny` | **(Required)** The Zod schema of the response.     |
-| `body` / `json` | `ZodTypeAny` | Schema for the request payload.                    |
-| `params`        | `ZodTypeAny` | Schema for URL route parameters.                   |
-| `query`         | `ZodTypeAny` | Schema for query string parameters.                |
-| `count`         | `number`     | Default number of items when response is an array. |
+| Property        | Type         | Description                                                         |
+| --------------- | ------------ | ------------------------------------------------------------------- |
+| `response`      | `ZodTypeAny` | **Required**. The Zod schema defining the mock return structure.    |
+| `body` / `json` | `ZodTypeAny` | Schema for the request payload.                                     |
+| `params`        | `ZodTypeAny` | Schema for route parameters.                                        |
+| `query`         | `ZodTypeAny` | Schema for query string parameters.                                 |
+| `count`         | `number`     | Default number of items generated when response schema is an array. |
 
 ### `createMockApi(apis, options?)`
 
-- `apis`: An object dictionary of instantiated API classes.
-- `options`:
-  - `seed?: number`: Deterministic random seed.
-  - `arraySize?: number`: Default array count (default: `10`).
+Instantiates the mock API client mapping each resource namespace to its typed client methods (`$get`, `$post`, `$put`, `$patch`, `$delete`).
 
-#### Generated Methods on Mock API
+#### Options
 
-- `mockApi.<resource>.$get(request?)`
-- `mockApi.<resource>.$post(request?)`
-- `mockApi.<resource>.$put(request?)`
-- `mockApi.<resource>.$patch(request?)`
-- `mockApi.<resource>.$delete(request?)`
+| Option      | Type     | Default     | Description                                    |
+| ----------- | -------- | ----------- | ---------------------------------------------- |
+| `seed`      | `number` | `undefined` | PRNG seed for deterministic data generation.   |
+| `arraySize` | `number` | `10`        | Global default item count for array responses. |
+
+### Standalone Generator (`generateMock`)
+
+Generates arbitrary fake data conforming to any Zod schema without instantiating API classes.
+
+```ts
+import { generateMock } from "@krishtz/mock-client";
+import { TodoSchema } from "./schemas/todo.schema";
+
+const mockTodo = generateMock(TodoSchema, { seed: 123 });
+```
 
 ---
 
-## 📄 License
+## License
 
-MIT © [krishtz](https://github.com/krishtz)
+MIT © [Krishna-sm](https://github.com/Krishna-sm)
