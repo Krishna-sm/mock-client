@@ -22,6 +22,16 @@ export function createMockApi<T extends Record<string, object>>(
   options?: MockApiOptions
 ): MockApi<T> {
   const client: Record<string, NamespaceMockClient> = {};
+  let callSequence = 0;
+
+  const getNextOptions = (): MockApiOptions | undefined => {
+    if (options?.seed === undefined) return options;
+    const nextSeed = (options.seed * 1664525 + ++callSequence * 1013904223) >>> 0;
+    return {
+      ...options,
+      seed: nextSeed,
+    };
+  };
 
   for (const [namespace, apiInstance] of Object.entries(apis)) {
     if (!apiInstance || typeof apiInstance !== "object") {
@@ -32,19 +42,19 @@ export function createMockApi<T extends Record<string, object>>(
 
     const namespaceClient: NamespaceMockClient = {
       $get: <R = unknown>(args?: MethodRequestArgs): Promise<R> =>
-        executeRoute<R>(apiInstance, "GET", args, options),
+        executeRoute<R>(apiInstance, "GET", args, getNextOptions()),
 
       $post: <R = unknown>(args?: MethodRequestArgs): Promise<R> =>
-        executeRoute<R>(apiInstance, "POST", args, options),
+        executeRoute<R>(apiInstance, "POST", args, getNextOptions()),
 
       $put: <R = unknown>(args?: MethodRequestArgs): Promise<R> =>
-        executeRoute<R>(apiInstance, "PUT", args, options),
+        executeRoute<R>(apiInstance, "PUT", args, getNextOptions()),
 
       $patch: <R = unknown>(args?: MethodRequestArgs): Promise<R> =>
-        executeRoute<R>(apiInstance, "PATCH", args, options),
+        executeRoute<R>(apiInstance, "PATCH", args, getNextOptions()),
 
       $delete: <R = unknown>(args?: MethodRequestArgs): Promise<R> =>
-        executeRoute<R>(apiInstance, "DELETE", args, options),
+        executeRoute<R>(apiInstance, "DELETE", args, getNextOptions()),
     };
 
     client[namespace] = namespaceClient;

@@ -407,7 +407,7 @@ export function generateZodMock<T extends z.ZodTypeAny>(
   schema: T,
   context: GenerateMockContext = {}
 ): z.infer<T> {
-  const seed = context.seed ?? 1337;
+  const seed = context.seed ?? Math.floor(Math.random() * 2147483647);
   const prng = createPrng(seed);
   return generateZodMockValue(schema, prng, context) as z.infer<T>;
 }
