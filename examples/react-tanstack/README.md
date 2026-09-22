@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# TanStack React Example
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This example demonstrates using `@krishtz/mock-client` with TanStack Query v5, TanStack Table v8, and React Router DOM using a Feature-Driven Design (FDD) architecture.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Standard useQuery** (`/query`): In-memory fetching, loading state indicators, refetching, and caching.
+- **useMutation & Cache Invalidation** (`/mutation`): Submitting forms with React Hook Form, creating/deleting entities, and automatically invalidating query caches.
+- **useInfiniteQuery** (`/infinite-scroll`): Cursor/page-based infinite pagination with cursor tracking.
+- **@tanstack/react-table** (`/table`): Rich data table with column sorting, fuzzy search filtering, and client-side pagination.
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```text
+src/
+├── components/           # Shared layout and navigation headers
+├── features/             # Feature-driven modules
+│   ├── query/            # Query feature (useQuery)
+│   ├── mutation/         # Mutation feature (useMutation)
+│   ├── infinite-scroll/  # Infinite scroll feature (useInfiniteQuery)
+│   └── table/            # Table feature (@tanstack/react-table)
+├── mock/                 # Mock API runtime setup and endpoints
+├── routes/               # React Router configurations
+├── schemas/              # Zod validation schemas
+└── types/                # TypeScript type definitions
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Running Locally
+
+```bash
+# Install dependencies from root or this folder
+npm install
+
+# Start Vite development server
+npm --workspace=examples/react-tanstack run dev
+```
