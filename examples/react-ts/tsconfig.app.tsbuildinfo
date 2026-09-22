@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/createtodoform.tsx","./src/components/todoitem.tsx","./src/components/todolist.tsx","./src/hooks/usetodos.ts","./src/mock/index.ts","./src/mock/todo-api.ts","./src/schemas/todo.schema.ts","./src/types/index.ts","./tests/app.test.tsx","./tests/setup.ts","./tests/usetodos.test.ts"],"version":"5.9.3"}
